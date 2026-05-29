@@ -1,0 +1,48 @@
+# Main configuration
+# 复制此文件为 config.local.yaml 并填入真实配置
+
+# LLM configuration - 火山引擎 ByteDance Ark
+llm:
+  provider: "anthropic"
+  api_key: "${ANTHROPIC_API_KEY}"
+  base_url: "${ANTHROPIC_BASE_URL}"
+  model: "${ANTHROPIC_MODEL}"
+
+# Database configuration
+database:
+  path: "./data/price_monitor.db"
+
+# Logging configuration
+logging:
+  level: "INFO"
+  file: "./logs/price_monitor.log"
+
+# Notification configuration
+notification:
+  enabled: true
+  # 企业微信Webhook
+  wecom:
+    enabled: false
+    webhook_url: "YOUR_WEBHOOK_URL"
+  # DingTalk webhook (disabled)
+  dingtalk:
+    enabled: false
+    webhook_url: "${DINGTALK_WEBHOOK_URL}"
+  # Terminal notification (always enabled for CLI)
+  terminal:
+    enabled: true
+
+# Skills configuration
+skills:
+  enabled:
+    - smzdm
+  # Each skill can have its own configuration
+  jd:
+    enabled: false
+  taobao:
+    enabled: false
+  pdd:
+    enabled: false
+  smzdm:
+    enabled: true
+

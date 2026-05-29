@@ -1,0 +1,39 @@
+# LLM
+anthropic>=0.45.0
+openai>=1.60.0
+langchain-openai>=0.3.0
+
+# Data validation
+pydantic>=2.10.0
+
+# Scheduler
+apscheduler>=3.10.0
+
+# Database
+# SQLite is built-in to Python
+
+# HTTP requests for skills
+aiohttp>=3.11.0
+requests>=2.32.0
+
+# CLI
+click>=8.1.0
+rich>=13.9.0
+
+# Configuration
+pyyaml>=6.0.0
+
+# Logging
+python-json-logger>=3.2.0
+
+# Browser automation with AI (optional, still available)
+browser-use>=0.1.0
+playwright>=1.40.0
+
+# Web scraping for fast direct extraction
+beautifulsoup4>=4.12.0
+
+# Web UI
+fastapi>=0.110.0
+uvicorn>=0.29.0
+jinja2>=3.1.0

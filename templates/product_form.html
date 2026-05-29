@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>{{ title }} - 保价追踪</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            font-size: 16px;
+            touch-action: manipulation;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px 30px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+        .header h1 { font-size: 26px; font-weight: 600; margin-bottom: 8px; }
+        .header a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 16px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            font-size: 15px;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .header a:hover { background: rgba(255,255,255,0.3); }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .form-section { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid #f3f4f6; }
+        .form-section:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+        .form-section h3 { font-size: 18px; color: #667eea; margin-bottom: 16px; font-weight: 600; }
+        .form-grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; grid-column: span 1; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-group label { font-weight: 500; color: #374151; font-size: 15px; }
+        .form-group input, .form-group textarea {
+            padding: 14px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 16px;
+            min-height: 48px;
+        }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .btn {
+            padding: 14px 28px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 48px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-secondary { background: #d1d5db; color: #374151; }
+        .btn:active { opacity: 0.8; transform: scale(0.98); }
+        .actions { display: flex; gap: 12px; margin-top: 24px; }
+
+        /* ========= 移动端适配 ========= */
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            .header {
+                padding: 16px 18px;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .header h1 { font-size: 20px; text-align: center; margin-bottom: 4px; }
+            .header a { justify-content: center; }
+            .card { padding: 20px; }
+            .form-section h3 { font-size: 17px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .actions { flex-direction: column; }
+            .actions .btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/">← 返回</a>
+            <h1>{{ title }}</h1>
+        </div>
+
+        <div class="card">
+            <form action="{{ action }}" method="POST">
+                <div class="form-section">
+                    <h3>📦 商品基本信息</h3>
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>商品名称 *</label>
+                            <input type="text" name="name" value="{{ product.name if product else '' }}" placeholder="例如：美的X6sMax洗碗机" required>
+                        </div>
+                        <div class="form-group full">
+                            <label>搜索关键词</label>
+                            <input type="text" name="keywords" value="{{ product.keywords if product else '' }}" placeholder="用于搜索该商品，多个关键词用空格分隔">
+                        </div>
+                        <div class="form-group full">
+                            <label>福利政策</label>
+                            <input type="text" name="welfare_policy" value="{{ product.welfare_policy if product else '' }}" placeholder="选填">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>🛡️ 保价相关信息</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>初始团购价</label>
+                            <input type="number" name="original_price" step="0.01" value="{{ product.original_price if product else '' }}" placeholder="例如：3999.00">
+                        </div>
+                        <div class="form-group">
+                            <label>订单号</label>
+                            <input type="text" name="original_order_no" value="{{ product.original_order_no if product else '' }}" placeholder="团购订单号">
+                        </div>
+                        <div class="form-group">
+                            <label>购买渠道</label>
+                            <input type="text" name="original_channel" value="{{ product.original_channel if product else '' }}" placeholder="例如：京东/拼多多/天猫">
+                        </div>
+                        <div class="form-group">
+                            <label>店铺活动</label>
+                            <input type="text" name="store_activity" value="{{ product.store_activity if product else '' }}" placeholder="选填">
+                        </div>
+                        <div class="form-group full">
+                            <label>团购活动</label>
+                            <input type="text" name="group_activity" value="{{ product.group_activity if product else '' }}" placeholder="选填">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <a href="/" class="btn btn-secondary">取消</a>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

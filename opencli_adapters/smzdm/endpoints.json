@@ -1,0 +1,23 @@
+{
+  "search-faxian": {
+    "url": "https://search.smzdm.com/?c=faxian&s={keyword}&order=time&v=b",
+    "method": "GET",
+    "params": {
+      "required": ["keyword"],
+      "optional": ["order"]
+    },
+    "response": "HTML",
+    "verifiedAt": "2026-05-25",
+    "notes": "好价搜索页面，使用 DOM 选择器 li.feed-row-wide 提取结果"
+  },
+  "search-home": {
+    "url": "https://search.smzdm.com/?c=home&s={keyword}&v=b",
+    "method": "GET",
+    "params": {
+      "required": ["keyword"]
+    },
+    "response": "HTML",
+    "verifiedAt": "2026-05-25",
+    "notes": "综合搜索页面（已有 smzdm search 命令）"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "title": {
+    "meaning": "商品标题",
+    "verifiedAt": "2026-05-25",
+    "selector": "h5.feed-block-title > a, h5 > a",
+    "attribute": "title || textContent"
+  },
+  "price": {
+    "meaning": "商品价格（元）",
+    "verifiedAt": "2026-05-25",
+    "selector": ".z-highlight"
+  },
+  "mall": {
+    "meaning": "商城名称",
+    "verifiedAt": "2026-05-25",
+    "selector": ".z-feed-foot-r .feed-block-extras span, .z-feed-foot-r span"
+  },
+  "url": {
+    "meaning": "商品详情页链接",
+    "verifiedAt": "2026-05-25",
+    "selector": "h5.feed-block-title > a, h5 > a",
+    "attribute": "href"
+  },
+  "time": {
+    "meaning": "发布时间（MM-DD HH:mm）",
+    "verifiedAt": "2026-05-25",
+    "source": "textContent regex"
+  }
+}

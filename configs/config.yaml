@@ -1,0 +1,32 @@
+# Main configuration template
+# Copy to config.local.yaml and modify
+
+# LLM configuration (optional, only needed for AI Agent CLI)
+llm:
+  provider: "anthropic"  # or "openai"
+  model: "claude-sonnet-4-6"
+  api_key: "${ANTHROPIC_API_KEY}"
+  base_url: null  # use default if null
+
+# Database configuration
+database:
+  path: "./data/price_monitor.db"
+
+# Notification configuration
+notification:
+  wecom:
+    enabled: true
+    # 企业微信群机器人 Webhook
+    # 获取方式: 群设置 → 群机器人 → 添加
+    webhook_url: "${WECOM_WEBHOOK_URL}"
+  dingtalk:
+    enabled: false
+    webhook_url: "${DINGTALK_WEBHOOK_URL}"
+
+# Skills configuration
+skills:
+  enabled:
+    - smzdm
+  smzdm:
+    enabled: true
+

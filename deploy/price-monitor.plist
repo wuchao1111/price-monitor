@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.price.monitor</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>cd /Users/bytedance/price-monitor-agent && source venv/bin/activate && python app.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/bytedance/price-monitor-agent</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/bytedance/Library/Logs/price-monitor.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/bytedance/Library/Logs/price-monitor-error.log</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StartInterval</key>
+    <integer>60</integer>
+</dict>
+</plist>

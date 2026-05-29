@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>{{ title }} - 保价追踪</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            font-size: 16px;
+            touch-action: manipulation;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px 30px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px;
+        }
+        .header h1 { font-size: 26px; font-weight: 600; margin-bottom: 8px; }
+        .header-nav { display: flex; gap: 12px; align-items: center; margin-left: auto; flex-wrap: wrap; }
+        .btn {
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 44px;
+        }
+        .btn-primary { background: white; color: #667eea; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn:active { opacity: 0.8; transform: scale(0.98); }
+        .grid { display: grid; gap: 24px; grid-template-columns: 1fr 1fr; }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .card h2 {
+            color: #1f2937;
+            font-size: 18px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+        .stat-card { text-align: center; padding: 24px; }
+        .stat-number { font-size: 36px; font-weight: 700; color: #667eea; }
+        .stat-label { color: #6b7280; margin-top: 4px; font-size: 14px; }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 12px 0;
+            border-bottom: 1px solid #f3f4f6;
+            gap: 12px;
+        }
+        .detail-label { color: #6b7280; font-size: 14px; flex-shrink: 0; }
+        .detail-value { font-weight: 500; text-align: right; word-break: break-word; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #f3f4f6; }
+        th { background: #f9fafb; font-weight: 600; color: #374151; font-size: 14px; }
+        .status-pending { background: #fef3c7; color: #d97706; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+        .status-confirmed { background: #d1fae5; color: #059669; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+        .status-rejected { background: #fee2e2; color: #dc2626; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+        .form-grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; grid-column: span 1; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-group label { font-weight: 500; color: #374151; font-size: 14px; }
+        .form-group input, .form-group textarea {
+            padding: 12px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 16px;
+            min-height: 44px;
+        }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .actions { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .modal-backdrop.show { display: flex; }
+        .modal { background: white; border-radius: 16px; padding: 30px; max-width: 500px; width: 100%; }
+        .modal h3 { margin-bottom: 20px; color: #1f2937; font-size: 20px; }
+        .modal p { color: #6b7280; line-height: 1.5; margin-bottom: 24px; }
+
+        /* ========= 移动端适配 ========= */
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            .header {
+                padding: 16px 18px;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .header h1 { font-size: 20px; text-align: center; margin-bottom: 4px; }
+            .header .header-nav { margin-left: 0; flex-direction: column; }
+            .header .btn { width: 100%; }
+            .grid { grid-template-columns: 1fr; gap: 16px; }
+            .card { padding: 18px; }
+            .stat-number { font-size: 30px; }
+            .stat-card { padding: 20px; }
+            .detail-row { flex-direction: column; gap: 4px; }
+            .detail-value { text-align: left; }
+            .form-grid { grid-template-columns: 1fr; }
+            .actions .btn { flex: 1; min-width: 120px; }
+            .card .actions { justify-content: center; }
+
+            /* 表格适配：在手机端改为卡片式 */
+            table { display: block; width: 100%; }
+            thead { display: none; }
+            tbody, tr, td { display: block; width: 100%; }
+            tbody tr {
+                border-radius: 12px;
+                border: 1px solid #e5e7eb;
+                padding: 16px;
+                margin-bottom: 12px;
+            }
+            tbody td {
+                border: none;
+                padding: 6px 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            tbody td::before {
+                content: attr(data-label);
+                color: #6b7280;
+                font-size: 13px;
+                font-weight: 500;
+            }
+            tbody td:first-child::before { content: '时间'; }
+            tbody td:nth-child(2)::before { content: '渠道'; }
+            tbody td:nth-child(3)::before { content: '低价'; }
+            tbody td:nth-child(4)::before { content: '保价'; }
+            tbody td:nth-child(5)::before { content: '状态'; }
+            tbody td:nth-child(6)::before { content: '备注'; }
+            tbody td:nth-child(7) {
+                justify-content: flex-start;
+                flex-wrap: wrap;
+                gap: 8px;
+                padding-top: 10px;
+            }
+            tbody td:nth-child(7)::before { content: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="flex: 1; min-width: 0;">
+                <h1>{{ product.name }}</h1>
+                <div style="opacity: 0.9; font-size: 14px;">关键词: {{ product.keywords }}</div>
+            </div>
+            <div class="header-nav">
+                <a href="/" class="btn btn-primary">← 返回列表</a>
+                <a href="/product/{{ product.id }}/edit" class="btn btn-primary">编辑</a>
+                <button class="btn btn-danger" onclick="confirmDelete()">删除</button>
+            </div>
+        </div>
+
+        <div class="grid" style="margin-bottom: 24px;">
+            <div class="card stat-card">
+                <div class="stat-number">¥{{ "%.2f"|format(total_guaranteed) }}</div>
+                <div class="stat-label">已保价总金额</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-number">¥{{ "%.2f"|format(total_pending) }}</div>
+                <div class="stat-label">待保价金额</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>📋 商品基本信息</h2>
+                <div class="detail-row">
+                    <span class="detail-label">初始团购价</span>
+                    <span class="detail-value">{% if product.original_price %}¥{{ "%.2f"|format(product.original_price) }}{% else %}未设置{% endif %}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">订单号</span>
+                    <span class="detail-value">{{ product.original_order_no or '-' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">购买渠道</span>
+                    <span class="detail-value">{{ product.original_channel or '-' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">店铺活动</span>
+                    <span class="detail-value" style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                        <span>{{ product.store_activity or '-' }}</span>
+                        {% if product.store_activity %}
+                            {% if product.store_activity_claimed %}
+                                <span style="color: #10b981; font-weight: 600; font-size: 13px;">✓ 已领取</span>
+                            {% else %}
+                                <form action="/product/{{ product.id }}/activity" method="POST" style="display: inline;">
+                                    <input type="hidden" name="type" value="store">
+                                    <button type="submit" class="btn btn-warning" style="padding: 6px 12px; font-size: 12px; min-height: 34px;">标记已领取</button>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">团购活动</span>
+                    <span class="detail-value" style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                        <span>{{ product.group_activity or '-' }}</span>
+                        {% if product.group_activity %}
+                            {% if product.group_activity_claimed %}
+                                <span style="color: #10b981; font-weight: 600; font-size: 13px;">✓ 已领取</span>
+                            {% else %}
+                                <form action="/product/{{ product.id }}/activity" method="POST" style="display: inline;">
+                                    <input type="hidden" name="type" value="group">
+                                    <button type="submit" class="btn btn-warning" style="padding: 6px 12px; font-size: 12px; min-height: 34px;">标记已领取</button>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="detail-row" style="border: none;">
+                    <span class="detail-label">当前已保最低价</span>
+                    <span class="detail-value" style="color: #10b981; font-weight: 700;">
+                        {% if product.current_guaranteed_price %}¥{{ "%.2f"|format(product.current_guaranteed_price) }}{% else %}-{% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>➕ 添加保价记录</h2>
+                <form action="/product/{{ product.id }}/guarantee" method="POST">
+                    <div class="form-group">
+                        <label>低价渠道 *</label>
+                        <input type="text" name="low_price_channel" placeholder="京东/淘宝/拼多多/天猫" required>
+                    </div>
+                    <div class="form-group">
+                        <label>低价订单号</label>
+                        <input type="text" name="low_price_order_no" placeholder="可选">
+                    </div>
+                    <div class="form-group">
+                        <label>发现的低价 *</label>
+                        <input type="number" name="low_price" step="0.01" placeholder="例如: 1999.00" required>
+                    </div>
+                    <div class="form-group full">
+                        <label>备注</label>
+                        <textarea name="note" rows="2" placeholder="选填" style="min-height: 80px;"></textarea>
+                    </div>
+                    <div class="actions">
+                        <button type="submit" class="btn btn-success" style="flex: 1;">提交保价申请</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 24px;">
+            <h2>📝 保价记录</h2>
+            {% if guarantee_records %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>提交时间</th>
+                            <th>低价渠道</th>
+                            <th>发现的低价</th>
+                            <th>保价金额</th>
+                            <th>状态</th>
+                            <th>备注</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in guarantee_records %}
+                            <tr>
+                                <td data-label="时间">{{ record.submitted_at.strftime('%Y-%m-%d %H:%M') if record.submitted_at else '-' }}</td>
+                                <td data-label="渠道">{{ record.low_price_channel }}</td>
+                                <td data-label="低价">¥{{ "%.2f"|format(record.low_price) }}</td>
+                                <td data-label="保价" style="font-weight: 600; color: #10b981;">¥{{ "%.2f"|format(record.guarantee_amount) }}</td>
+                                <td data-label="状态">
+                                    {% if record.status == "pending" %}
+                                        <span class="status-pending">待提交</span>
+                                    {% elif record.status == "processing" %}
+                                        <span class="status-pending" style="background: #dbeafe; color: #1d4ed8;">处理中</span>
+                                    {% elif record.status == "confirmed" %}
+                                        <span class="status-confirmed">已到账</span>
+                                    {% else %}
+                                        <span class="status-rejected">已拒绝</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="备注">{{ record.note or '-' }}</td>
+                                <td data-label="操作" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                    {% if record.status == "pending" %}
+                                        <form action="/guarantee/{{ record.id }}/submit" method="POST" style="display: inline;">
+                                            <button type="submit" class="btn btn-success" style="padding: 8px 14px; font-size: 13px; min-height: 36px;">提交客服</button>
+                                        </form>
+                                        <form action="/guarantee/{{ record.id }}/reject" method="POST" style="display: inline;">
+                                            <button type="submit" class="btn btn-warning" style="padding: 8px 14px; font-size: 13px; min-height: 36px;">拒绝</button>
+                                        </form>
+                                    {% elif record.status == "processing" %}
+                                        <form action="/guarantee/{{ record.id }}/confirm" method="POST" style="display: inline;">
+                                            <button type="submit" class="btn btn-success" style="padding: 8px 14px; font-size: 13px; min-height: 36px;">确认到账</button>
+                                        </form>
+                                        <form action="/guarantee/{{ record.id }}/reject" method="POST" style="display: inline;">
+                                            <button type="submit" class="btn btn-warning" style="padding: 8px 14px; font-size: 13px; min-height: 36px;">拒绝</button>
+                                        </form>
+                                    {% elif record.status == "confirmed" %}
+                                        <form action="/guarantee/{{ record.id }}/undo" method="POST" style="display: inline;" onsubmit="return confirm('确定要撤销已到账吗？');">
+                                            <button type="submit" class="btn btn-warning" style="padding: 8px 14px; font-size: 13px; min-height: 36px;">撤销</button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div style="text-align: center; padding: 40px 20px; color: #9ca3af;">暂无保价记录</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="deleteModal">
+        <div class="modal">
+            <h3>确认删除？</h3>
+            <p>此操作将永久删除商品及所有关联记录，无法撤销。</p>
+            <div class="actions" style="margin-top: 24px; justify-content: flex-end;">
+                <button class="btn" style="background: #d1d5db; color: #374151;" onclick="document.getElementById('deleteModal').classList.remove('show')">取消</button>
+                <form action="/product/{{ product.id }}/delete" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function confirmDelete() {
+            document.getElementById('deleteModal').classList.add('show');
+        }
+    </script>
+</body>
+</html>

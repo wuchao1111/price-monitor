@@ -1,0 +1,76 @@
+# 环境配置（包含隐私信息）
+configs/config.local.yaml
+
+# 数据库文件
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# 日志文件
+logs/
+log/
+*.log
+
+# 虚拟环境
+venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 导出文件
+price_monitor_export_*.csv
+price_monitor_export_*.xlsx
+
+# 备份文件
+price_monitor_backup_*.tar.gz
+*.tar.gz
+
+# 其他
+.DS_Store
+Thumbs.db
+.claude/
+.claude-memory/
+
+# 测试临时文件
+tests/*.db
+
+# OpenCLI 本地配置
+.agents/
+.coco/
+.trae/
+.trae-cn/
+skills/
+skills-lock.json
+
+# 测试文件
+test_*.py

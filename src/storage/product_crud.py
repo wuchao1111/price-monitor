@@ -168,9 +168,10 @@ class ProductCRUD:
     def list_by_status(self, status: str) -> List[Product]:
         cursor = self.db.execute(
             """
-            SELECT DISTINCT p.* FROM products p
-            INNER JOIN price_guarantee_records r ON p.id = r.product_id
-            WHERE r.status = ?
+            SELECT p.* FROM products p
+            WHERE (SELECT status FROM price_guarantee_records
+                   WHERE product_id = p.id
+                   ORDER BY submitted_at DESC, id DESC LIMIT 1) = ?
             ORDER BY p.created_at DESC
             """,
             (status,)
@@ -194,10 +195,11 @@ class ProductCRUD:
         else:
             cursor = self.db.execute(
                 """
-                SELECT DISTINCT p.* FROM products p
-                INNER JOIN price_guarantee_records r ON p.id = r.product_id
+                SELECT p.* FROM products p
                 WHERE (p.name LIKE ? OR p.keywords LIKE ? OR p.original_order_no LIKE ?)
-                AND r.status = ?
+                AND (SELECT status FROM price_guarantee_records
+                     WHERE product_id = p.id
+                     ORDER BY submitted_at DESC, id DESC LIMIT 1) = ?
                 ORDER BY p.created_at DESC
                 """,
                 (search_pattern, search_pattern, search_pattern, status)
@@ -254,9 +256,10 @@ class ProductCRUD:
         else:
             cursor = self.db.execute(
                 """
-                SELECT COUNT(DISTINCT p.id) as cnt FROM products p
-                INNER JOIN price_guarantee_records r ON p.id = r.product_id
-                WHERE r.status = ?
+                SELECT COUNT(*) as cnt FROM products p
+                WHERE (SELECT status FROM price_guarantee_records
+                       WHERE product_id = p.id
+                       ORDER BY submitted_at DESC, id DESC LIMIT 1) = ?
                 """,
                 (status,)
             )
@@ -278,10 +281,11 @@ class ProductCRUD:
         else:
             cursor = self.db.execute(
                 """
-                SELECT COUNT(DISTINCT p.id) as cnt FROM products p
-                INNER JOIN price_guarantee_records r ON p.id = r.product_id
+                SELECT COUNT(*) as cnt FROM products p
                 WHERE (p.name LIKE ? OR p.keywords LIKE ? OR p.original_order_no LIKE ?)
-                AND r.status = ?
+                AND (SELECT status FROM price_guarantee_records
+                     WHERE product_id = p.id
+                     ORDER BY submitted_at DESC, id DESC LIMIT 1) = ?
                 """,
                 (search_pattern, search_pattern, search_pattern, status)
             )
@@ -322,9 +326,10 @@ class ProductCRUD:
         else:
             cursor = self.db.execute(
                 """
-                SELECT DISTINCT p.* FROM products p
-                INNER JOIN price_guarantee_records r ON p.id = r.product_id
-                WHERE r.status = ?
+                SELECT p.* FROM products p
+                WHERE (SELECT status FROM price_guarantee_records
+                       WHERE product_id = p.id
+                       ORDER BY submitted_at DESC, id DESC LIMIT 1) = ?
                 ORDER BY p.created_at DESC LIMIT ? OFFSET ?
                 """,
                 (status, page_size, offset)
@@ -349,10 +354,11 @@ class ProductCRUD:
         else:
             cursor = self.db.execute(
                 """
-                SELECT DISTINCT p.* FROM products p
-                INNER JOIN price_guarantee_records r ON p.id = r.product_id
+                SELECT p.* FROM products p
                 WHERE (p.name LIKE ? OR p.keywords LIKE ? OR p.original_order_no LIKE ?)
-                AND r.status = ?
+                AND (SELECT status FROM price_guarantee_records
+                     WHERE product_id = p.id
+                     ORDER BY submitted_at DESC, id DESC LIMIT 1) = ?
                 ORDER BY p.created_at DESC LIMIT ? OFFSET ?
                 """,
                 (search_pattern, search_pattern, search_pattern, status, page_size, offset)

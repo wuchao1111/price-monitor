@@ -52,6 +52,21 @@ class PriceMonitorAgent(AgentToolsMixin):
             f"model: {self.llm_client.model}"
         )
 
+        # Conversation history for multi-turn memory
+        self._conversation_history: List[Dict] = []
+
+    def _trim_history(self, max_messages: int = 30) -> None:
+        """Trim old messages to prevent context overflow"""
+        if len(self._conversation_history) > max_messages:
+            # Keep system message (OpenAI) and recent messages
+            if self._conversation_history[0]["role"] == "system":
+                self._conversation_history = (
+                    [self._conversation_history[0]]
+                    + self._conversation_history[-(max_messages - 1):]
+                )
+            else:
+                self._conversation_history = self._conversation_history[-max_messages:]
+
     def _load_config(self, config_path: str) -> Dict:
         """Load configuration from yaml"""
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -108,8 +123,16 @@ class PriceMonitorAgent(AgentToolsMixin):
         return results
 
     async def chat(self, user_input: str, max_turns: int = 5) -> str:
-        """Main chat entry point with multi-turn tool calling"""
-        messages = self.llm_client.create_initial_messages(user_input)
+        """Main chat entry point with multi-turn tool calling and conversation memory"""
+        if not self._conversation_history:
+            # First message: create initial messages (includes system prompt for OpenAI)
+            messages = self.llm_client.create_initial_messages(user_input)
+            self._conversation_history = messages
+        else:
+            # Subsequent messages: append to history
+            self._conversation_history.append({"role": "user", "content": user_input})
+            messages = self._conversation_history
+
         tools = self.tool_registry.list_tools()
 
         for turn in range(max_turns):
@@ -117,7 +140,10 @@ class PriceMonitorAgent(AgentToolsMixin):
             tool_calls = self.llm_client.parse_tool_calls(response)
 
             if not tool_calls:
-                return self.llm_client.extract_text(response)
+                text = self.llm_client.extract_text(response)
+                self._conversation_history.append({"role": "assistant", "content": text})
+                self._trim_history()
+                return text
 
             # Execute tool calls
             results = await self.execute_tool_calls(tool_calls)
@@ -129,4 +155,7 @@ class PriceMonitorAgent(AgentToolsMixin):
 
         # Max turns reached, get final text response
         final_response = self.llm_client.send_request(messages, SYSTEM_PROMPT, tools)
-        return self.llm_client.extract_text(final_response)
+        text = self.llm_client.extract_text(final_response)
+        self._conversation_history.append({"role": "assistant", "content": text})
+        self._trim_history()
+        return text

@@ -74,3 +74,9 @@ skills-lock.json
 
 # 测试文件
 test_*.py
+
+# 部署脚本（包含开发机敏感信息）
+deploy_dev.sh
+
+# 登录态 cookies
+data/smzdm_cookies.json

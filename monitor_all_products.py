@@ -3,10 +3,11 @@
 价格监控主脚本 - 每10分钟检查所有商品的价格
 """
 import asyncio
+import json
 import os
 import sys
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Add the project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -32,6 +33,19 @@ logger = logging.getLogger(__name__)
 # 已发送通知的链接记录
 SENT_URLS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'log', 'sent_urls.txt')
 sent_urls = set()
+
+# 监控状态文件（供 Web UI 读取）
+MONITOR_STATUS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'log', 'monitor_status.json')
+
+def update_monitor_status(status: str, **kwargs):
+    """更新监控状态到 JSON 文件，供 Web UI 读取"""
+    data = {"status": status, "updated_at": datetime.now().isoformat()}
+    data.update(kwargs)
+    try:
+        with open(MONITOR_STATUS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False)
+    except Exception as e:
+        logger.error(f"写入监控状态文件失败: {e}")
 
 def load_sent_urls():
     """加载已发送的链接记录"""
@@ -163,9 +177,12 @@ async def check_single_product(product, skill, wecom_webhook_url, product_crud, 
 
 async def check_all_products():
     """检查所有商品的价格"""
+    start_time = datetime.now()
     logger.info("=" * 60)
     logger.info("开始检查所有商品价格")
     logger.info("=" * 60)
+
+    update_monitor_status("running", start_time=start_time.isoformat())
 
     # 1. 读取配置
     config_path = os.path.join(os.path.dirname(__file__), "configs", "config.local.yaml")
@@ -194,10 +211,32 @@ async def check_all_products():
 
     if not products:
         logger.warning("没有商品需要检查")
+        update_monitor_status("idle", product_count=0, message="没有商品需要检查")
         return
 
-    # 5. 初始化 skill
-    skill = SmzdmOpencliSkill({"enabled": True})
+    # 5. 初始化 skill（从配置读取，包括 driver 选择）
+    smzdm_config = config.get("skills", {}).get("smzdm", {"enabled": True})
+    skill = SmzdmOpencliSkill(smzdm_config)
+
+    # 5.2 检查 smzdm cookie 是否过期（仅 playwright 驱动）
+    cookie_health = skill.check_cookie_health()
+    if cookie_health in ("missing", "expired"):
+        msg = (
+            f"⚠️ 什么值得买 Cookie 状态异常 ({cookie_health})\n\n"
+            f"请重新在本地电脑运行:\n"
+            f"python3 scripts/save_smzdm_cookies.py\n\n"
+            f"然后将 data/smzdm_cookies.json 同步到开发机"
+        )
+        logger.warning(msg.replace("\n", " | "))
+        if wecom_webhook_url:
+            try:
+                import requests
+                requests.post(wecom_webhook_url, json={
+                    "msgtype": "markdown",
+                    "markdown": {"content": msg},
+                }, timeout=10)
+            except Exception as e:
+                logger.error(f"Failed to send cookie alert: {e}")
 
     # 5.5 初始化相关性过滤（默认启用，配合缓存策略，首次全量判断后后续命中缓存）
     rf_config = config.get("relevance_filter", {"enabled": True, "monitor_enabled": True})
@@ -226,11 +265,48 @@ async def check_all_products():
             price_history_crud,
             relevance_filter  # NEW
         )
+
+        # 检查 cookie 是否在本次查询中过期
+        if getattr(skill, '_cookie_expired', False):
+            msg = (
+                f"⚠️ 什么值得买 Cookie 已过期\n\n"
+                f"在检查商品「{product.name}」时发现 cookie 已失效。\n\n"
+                f"请重新在本地电脑运行:\n"
+                f"`python3 scripts/save_smzdm_cookies.py`\n\n"
+                f"然后将 `data/smzdm_cookies.json` 同步到开发机:\n"
+                f"`bash deploy_dev.sh cookie`"
+            )
+            logger.warning(f"Cookie expired during check, stopping further checks")
+            if wecom_webhook_url:
+                try:
+                    import requests
+                    requests.post(wecom_webhook_url, json={
+                        "msgtype": "markdown",
+                        "markdown": {"content": msg},
+                    }, timeout=10)
+                    logger.info("Sent cookie expired notification to WeCom")
+                except Exception as e:
+                    logger.error(f"Failed to send cookie alert: {e}")
+            break  # 停止后续检查，避免无谓的请求
+
         await asyncio.sleep(2)  # 稍微间隔，避免请求过快
 
+    end_time = datetime.now()
+    duration = (end_time - start_time).total_seconds()
     logger.info("=" * 60)
-    logger.info("所有商品检查完成")
+    logger.info(f"所有商品检查完成，耗时 {duration:.1f} 秒")
     logger.info("=" * 60)
+    update_monitor_status("success", start_time=start_time.isoformat(), end_time=end_time.isoformat(),
+                         duration_seconds=round(duration, 1), product_count=len(products))
+
+
+async def check_all_products_wrapper():
+    """包装 check_all_products，捕获未处理异常并更新状态"""
+    try:
+        await check_all_products()
+    except Exception as e:
+        logger.error(f"检查过程发生未处理异常: {e}", exc_info=True)
+        update_monitor_status("error", message=str(e))
 
 
 async def run_monitor():
@@ -245,9 +321,9 @@ async def run_monitor():
     # 创建 scheduler，每10分钟运行一次
     scheduler = AsyncIOScheduler()
 
-    # 添加任务
+    # 添加任务（使用 wrapper 以捕获异常）
     scheduler.add_job(
-        check_all_products,
+        check_all_products_wrapper,
         'interval',
         minutes=10,
         id='check_all_products',
@@ -260,9 +336,15 @@ async def run_monitor():
     logger.info("定时任务已启动，每10分钟运行一次")
     print("定时任务已启动，按 Ctrl+C 停止")
 
+    update_monitor_status("running", start_time=datetime.now().isoformat(), product_count=0, message="首次检查中...")
+
     # 立即运行一次
     logger.info("立即运行第一次检查...")
-    await check_all_products()
+    try:
+        await check_all_products()
+    except Exception as e:
+        logger.error(f"首次检查失败: {e}", exc_info=True)
+        update_monitor_status("error", message=str(e))
 
     # 保持运行
     try:

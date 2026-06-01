@@ -29,6 +29,8 @@ skills:
     - smzdm
   smzdm:
     enabled: true
+    # driver: "opencli"    # 本地 Mac 用 opencli（依赖 Chrome + Browser Bridge）
+    # driver: "playwright" # 无头服务器用 playwright
 
 # Relevance filter configuration
 relevance_filter:

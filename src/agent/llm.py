@@ -195,7 +195,23 @@ class OpenAIClient(BaseLLMClient):
     ) -> List[Dict]:
         # OpenAI requires the assistant message with tool_calls in the conversation
         if original_response:
-            messages.append(original_response.choices[0].message)
+            msg = original_response.choices[0].message
+            tool_calls_list = []
+            if msg.tool_calls:
+                for tc in msg.tool_calls:
+                    tool_calls_list.append({
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    })
+            messages.append({
+                "role": msg.role,
+                "content": msg.content or "",
+                "tool_calls": tool_calls_list,
+            })
 
         for call, result in zip(tool_calls, results):
             messages.append({

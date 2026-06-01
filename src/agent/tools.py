@@ -174,8 +174,20 @@ class AgentToolsMixin:
                 "message": f"No prices found for product {product.name} from any skill"
             }
 
-        # Compare
-        compare_result = self.comparator.compare(product, results)
+        # Apply relevance filtering
+        filtered = await self.relevance_filter.filter(product.keywords, results)
+        if not filtered.kept:
+            return {
+                "success": False,
+                "message": (
+                    f"No relevant prices found for {product.name}. "
+                    f"All {len(filtered.filtered)} results were for different products."
+                ),
+                "filtered_results": filtered.filtered_details,
+            }
+
+        # Compare (use filtered results)
+        compare_result = self.comparator.compare(product, filtered.kept)
         if not compare_result:
             return {
                 "success": False,
@@ -190,7 +202,8 @@ class AgentToolsMixin:
             "latest_price": compare_result.latest_price,
             "is_new_lowest": compare_result.is_new_lowest,
             "source": compare_result.source,
-            "all_prices": [r.model_dump() for r in compare_result.all_prices]
+            "all_prices": [r.model_dump() for r in compare_result.all_prices],
+            "filtered_results": filtered.filtered_details if filtered.filtered else None,
         }
 
         if compare_result.is_new_lowest:

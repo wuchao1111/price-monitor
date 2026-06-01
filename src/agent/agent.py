@@ -11,6 +11,7 @@ import yaml
 from src.skills.manager import SkillManager
 from src.modules.comparator import PriceComparator
 from src.modules.notification import NotificationManager
+from src.modules.relevance_filter import RelevanceFilter
 from src.storage import ProductCRUD, PriceHistoryCRUD, ChangeLogCRUD
 from src.agent.prompts import SYSTEM_PROMPT
 from src.agent.registry import ToolRegistry
@@ -47,6 +48,14 @@ class PriceMonitorAgent(AgentToolsMixin):
 
         # Initialize LLM client
         self.llm_client = create_llm_client(self.config)
+
+        # Initialize relevance filter (use dedicated llm config if available, fallback to main llm)
+        rf_config = self.config.get("relevance_filter", {"enabled": True})
+        rf_llm_config = rf_config.get("llm", self.config["llm"])
+        self.relevance_filter = RelevanceFilter(
+            llm_config=rf_llm_config,
+            enabled=rf_config.get("enabled", True),
+        )
         logger.info(
             f"Initialized LLM client: {self.config['llm']['provider']}, "
             f"model: {self.llm_client.model}"

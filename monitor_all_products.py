@@ -19,6 +19,7 @@ from src.skills.smzdm_opencli import SmzdmOpencliSkill
 from src.storage.database import Database
 from src.storage import ProductCRUD, PriceGuaranteeCRUD, PriceHistoryCRUD
 from src.models.schemas import PriceHistory
+from src.modules.relevance_filter import RelevanceFilter
 
 
 # 配置日志
@@ -89,7 +90,7 @@ async def send_wecom_notification(webhook_url, product_name, result_title, old_p
         return False
 
 
-async def check_single_product(product, skill, wecom_webhook_url, product_crud, price_history_crud):
+async def check_single_product(product, skill, wecom_webhook_url, product_crud, price_history_crud, relevance_filter=None):
     """检查单个商品的价格"""
     logger.info(f"检查商品: {product.name} (关键词: {product.keywords})")
 
@@ -100,6 +101,19 @@ async def check_single_product(product, skill, wecom_webhook_url, product_crud, 
         if not results:
             logger.warning(f"没有找到 {product.name} 的结果")
             return
+
+        # 可选：相关性过滤
+        if relevance_filter and relevance_filter._enabled:
+            filtered = await relevance_filter.filter(product.keywords, results)
+            if filtered.filtered:
+                logger.info(
+                    f"过滤掉 {len(filtered.filtered)} 个不相关结果: "
+                    + ", ".join(d["title"] for d in filtered.filtered_details)
+                )
+            if not filtered.kept:
+                logger.warning(f"所有结果均不相关，跳过 {product.name}")
+                return
+            results = filtered.kept
 
         logger.info(f"找到 {len(results)} 个结果，最低价: ¥{results[0].price:.2f}")
 
@@ -185,6 +199,23 @@ async def check_all_products():
     # 5. 初始化 skill
     skill = SmzdmOpencliSkill({"enabled": True})
 
+    # 5.5 初始化相关性过滤（默认启用，配合缓存策略，首次全量判断后后续命中缓存）
+    rf_config = config.get("relevance_filter", {"enabled": True, "monitor_enabled": True})
+    relevance_filter = None
+    if rf_config.get("monitor_enabled", True):
+        # 优先使用独立 LLM 配置，fallback 到主 llm
+        rf_llm_config = rf_config.get("llm", config.get("llm"))
+        if rf_llm_config:
+            relevance_filter = RelevanceFilter(
+                llm_config=rf_llm_config,
+                enabled=True,
+            )
+            logger.info("相关性过滤已启用（监控路径）")
+        else:
+            logger.warning("未找到 LLM 配置，相关性过滤无法启用")
+    else:
+        logger.info("相关性过滤未启用（监控路径），如需启用请设置 relevance_filter.monitor_enabled=true")
+
     # 6. 逐个检查商品
     for product in products:
         await check_single_product(
@@ -192,7 +223,8 @@ async def check_all_products():
             skill,
             wecom_webhook_url,
             product_crud,
-            price_history_crud
+            price_history_crud,
+            relevance_filter  # NEW
         )
         await asyncio.sleep(2)  # 稍微间隔，避免请求过快
 

@@ -30,3 +30,12 @@ skills:
   smzdm:
     enabled: true
 
+# Relevance filter configuration
+relevance_filter:
+  enabled: true  # 在 Agent 交互中启用相关性过滤（使用 LLM 判断搜索结果是否与关键词匹配）
+  monitor_enabled: true  # 在后台监控中启用（配合缓存，成本可控）
+  # llm:  # 可选：使用独立 LLM 配置（便宜的模型），不配置则复用主 llm
+  #   provider: "openai"
+  #   model: "gpt-4o-mini"
+  #   api_key: "${CHEAP_LLM_API_KEY}"
+

@@ -55,17 +55,26 @@ class PriceMonitorAgent(AgentToolsMixin):
         # Conversation history for multi-turn memory
         self._conversation_history: List[Dict] = []
 
-    def _trim_history(self, max_messages: int = 30) -> None:
-        """Trim old messages to prevent context overflow"""
-        if len(self._conversation_history) > max_messages:
-            # Keep system message (OpenAI) and recent messages
-            if self._conversation_history[0]["role"] == "system":
-                self._conversation_history = (
-                    [self._conversation_history[0]]
-                    + self._conversation_history[-(max_messages - 1):]
-                )
-            else:
-                self._conversation_history = self._conversation_history[-max_messages:]
+    def _trim_history(self, max_turns: int = 20) -> None:
+        """Trim to keep only the last N conversation turns (each turn = one user query)"""
+        # Find real user messages (plain string content, not tool results)
+        user_msg_indices = [
+            i for i, m in enumerate(self._conversation_history)
+            if m["role"] == "user" and isinstance(m.get("content"), str)
+        ]
+        if len(user_msg_indices) <= max_turns:
+            return
+
+        # Keep only the last max_turns user messages and everything after
+        keep_from = user_msg_indices[-max_turns]
+
+        if self._conversation_history[0]["role"] == "system":
+            self._conversation_history = (
+                [self._conversation_history[0]]
+                + self._conversation_history[keep_from:]
+            )
+        else:
+            self._conversation_history = self._conversation_history[keep_from:]
 
     def _load_config(self, config_path: str) -> Dict:
         """Load configuration from yaml"""

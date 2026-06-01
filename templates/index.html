@@ -223,6 +223,35 @@
             .pagination-info { width: 100%; text-align: center; margin: 0 0 8px 0; }
             .pagination a, .pagination span { padding: 10px 14px; font-size: 14px; }
             .pagination span:not(.pagination-info):not(.current):not(.disabled) { display: none; }
+            .page-size-selector { width: 100%; justify-content: center; margin-bottom: 8px; }
+        }
+
+        /* ========= 每页条数选择器 ========= */
+        .page-size-selector {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #666;
+        }
+        .page-size-selector select {
+            padding: 3px 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            background: #fff;
+            cursor: pointer;
+        }
+        .page-size-selector select:focus {
+            outline: none;
+            border-color: #4a90d9;
+        }
+        .pagination-footer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            margin-top: 24px;
         }
     </style>
 </head>
@@ -233,26 +262,28 @@
             <div class="header-right">
                 <form action="/" method="GET" class="search-box">
                     <input type="text" name="q" placeholder="搜索商品名称、关键词或订单号..." value="{{ search_query }}">
+                    {% if page_size != 5 %}<input type="hidden" name="page_size" value="{{ page_size }}">{% endif %}
                     {% if search_query or status_filter %}
                         <a href="/" class="btn btn-primary">清除</a>
                     {% endif %}
                 </form>
                 <a href="/product/new" class="btn btn-primary">+ 添加商品</a>
+                <a href="/chat" class="btn btn-primary">🤖 AI 助手</a>
             </div>
         </header>
 
         <div class="filter-bar">
-            <a href="/{% if search_query %}?q={{ search_query }}{% endif %}"
+            <a href="/{% if search_query %}?q={{ search_query }}{% endif %}{% if page_size != 5 %}&page_size={{ page_size }}{% endif %}"
                class="filter-btn {% if not status_filter %}active{% endif %}">全部</a>
-            <a href="/?status=none{% if search_query %}&q={{ search_query }}{% endif %}"
+            <a href="/?status=none{% if search_query %}&q={{ search_query }}{% endif %}{% if page_size != 5 %}&page_size={{ page_size }}{% endif %}"
                class="filter-btn {% if status_filter == 'none' %}active{% endif %}">无保价</a>
-            <a href="/?status=pending{% if search_query %}&q={{ search_query }}{% endif %}"
+            <a href="/?status=pending{% if search_query %}&q={{ search_query }}{% endif %}{% if page_size != 5 %}&page_size={{ page_size }}{% endif %}"
                class="filter-btn {% if status_filter == 'pending' %}active{% endif %}">待提交</a>
-            <a href="/?status=processing{% if search_query %}&q={{ search_query }}{% endif %}"
+            <a href="/?status=processing{% if search_query %}&q={{ search_query }}{% endif %}{% if page_size != 5 %}&page_size={{ page_size }}{% endif %}"
                class="filter-btn {% if status_filter == 'processing' %}active{% endif %}">处理中</a>
-            <a href="/?status=confirmed{% if search_query %}&q={{ search_query }}{% endif %}"
+            <a href="/?status=confirmed{% if search_query %}&q={{ search_query }}{% endif %}{% if page_size != 5 %}&page_size={{ page_size }}{% endif %}"
                class="filter-btn {% if status_filter == 'confirmed' %}active{% endif %}">已到账</a>
-            <a href="/?status=rejected{% if search_query %}&q={{ search_query }}{% endif %}"
+            <a href="/?status=rejected{% if search_query %}&q={{ search_query }}{% endif %}{% if page_size != 5 %}&page_size={{ page_size }}{% endif %}"
                class="filter-btn {% if status_filter == 'rejected' %}active{% endif %}">已拒绝</a>
         </div>
 
@@ -327,33 +358,58 @@
             {% endif %}
         </div>
 
-        {% if total_pages > 1 %}
-        <div class="pagination">
-            <span class="pagination-info">共 {{ total }} 件商品，第 {{ current_page }} / {{ total_pages }} 页</span>
+        <div class="pagination-footer">
+            <div class="page-size-selector">
+                <label>每页</label>
+                <select onchange="changePageSize(this.value)">
+                    <option value="5" {% if page_size == 5 %}selected{% endif %}>5</option>
+                    <option value="10" {% if page_size == 10 %}selected{% endif %}>10</option>
+                    <option value="20" {% if page_size == 20 %}selected{% endif %}>20</option>
+                </select>
+                <label>条</label>
+            </div>
 
-            {% if current_page > 1 %}
-                <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ current_page - 1 }}">上一页</a>
-            {% else %}
-                <span class="disabled">上一页</span>
-            {% endif %}
+            {% if total_pages > 1 %}
+            <div class="pagination">
+                <span class="pagination-info">共 {{ total }} 件商品，第 {{ current_page }} / {{ total_pages }} 页</span>
 
-            {% for p in range(1, total_pages + 1) %}
-                {% if p == current_page %}
-                    <span class="current">{{ p }}</span>
-                {% elif p <= 3 or p > total_pages - 3 or (p >= current_page - 2 and p <= current_page + 2) %}
-                    <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ p }}">{{ p }}</a>
-                {% elif p == 4 or p == total_pages - 3 %}
-                    <span>...</span>
+                {% set url_prefix = "?" %}
+                {% if search_query %}{% set url_prefix = url_prefix + "q=" + search_query + "&" %}{% endif %}
+                {% if status_filter %}{% set url_prefix = url_prefix + "status=" + status_filter + "&" %}{% endif %}
+                {% set url_prefix = url_prefix + "page_size=" + page_size|string + "&" %}
+
+                {% if current_page > 1 %}
+                    <a href="{{ url_prefix }}page={{ current_page - 1 }}">上一页</a>
+                {% else %}
+                    <span class="disabled">上一页</span>
                 {% endif %}
-            {% endfor %}
 
-            {% if current_page < total_pages %}
-                <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ current_page + 1 }}">下一页</a>
-            {% else %}
-                <span class="disabled">下一页</span>
+                {% for p in range(1, total_pages + 1) %}
+                    {% if p == current_page %}
+                        <span class="current">{{ p }}</span>
+                    {% elif p <= 3 or p > total_pages - 3 or (p >= current_page - 2 and p <= current_page + 2) %}
+                        <a href="{{ url_prefix }}page={{ p }}">{{ p }}</a>
+                    {% elif p == 4 or p == total_pages - 3 %}
+                        <span>...</span>
+                    {% endif %}
+                {% endfor %}
+
+                {% if current_page < total_pages %}
+                    <a href="{{ url_prefix }}page={{ current_page + 1 }}">下一页</a>
+                {% else %}
+                    <span class="disabled">下一页</span>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
-        {% endif %}
     </div>
+    <script>
+    function changePageSize(size) {
+        var params = new URLSearchParams(window.location.search);
+        params.set('page', '1');
+        params.set('page_size', size);
+        window.location.search = params.toString();
+    }
+    </script>
 </body>
 </html>

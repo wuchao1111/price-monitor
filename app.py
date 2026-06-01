@@ -17,14 +17,20 @@ try:
 
     # Import libraries
     print("[1/6] 导入库...")
+    import asyncio
+    import json
     import uvicorn
     from jinja2 import Environment, FileSystemLoader
     from fastapi import FastAPI, Form, Request
-    from fastapi.responses import HTMLResponse, RedirectResponse
+    from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 
     from src.storage.database import Database
-    from src.storage import ProductCRUD, PriceGuaranteeCRUD
+    from src.storage import ProductCRUD, PriceGuaranteeCRUD, PriceHistoryCRUD, ChangeLogCRUD
     from src.models.schemas import Product, PriceGuaranteeRecord
+    from src.skills.manager import SkillManager
+    from src.modules.notification import NotificationManager, TerminalNotification, WeComNotification, DingTalkNotification
+    from src.modules.comparator import PriceComparator
+    from src.agent.core import PriceMonitorAgent
     print("  库导入成功")
 
     app = FastAPI(title="Price Guarantee Tracker")
@@ -64,7 +70,13 @@ try:
                 page = 1
         except ValueError:
             page = 1
-        page_size = 5
+        page_size_str = request.query_params.get("page_size", "5")
+        try:
+            page_size = int(page_size_str)
+            if page_size not in (5, 10, 20):
+                page_size = 5
+        except ValueError:
+            page_size = 5
 
         db = get_db()
         product_crud = ProductCRUD(db)
@@ -93,6 +105,7 @@ try:
             current_page=page,
             total_pages=total_pages,
             total=total,
+            page_size=page_size,
             title="保价商品列表"
         )
 
@@ -271,6 +284,59 @@ try:
         db = get_db()
         ProductCRUD(db).delete(product_id)
         return RedirectResponse(url="/", status_code=303)
+
+    # ==================== Agent Chat ====================
+
+    def init_agent() -> PriceMonitorAgent:
+        """Initialize the AI agent with all dependencies"""
+        db = Database(db_path)
+        product_crud = ProductCRUD(db)
+        price_history_crud = PriceHistoryCRUD(db)
+        change_log_crud = ChangeLogCRUD(db)
+
+        skill_manager = SkillManager()
+        from src.skills import register_all_skills
+        register_all_skills(skill_manager, config)
+
+        comparator = PriceComparator(product_crud, price_history_crud)
+        notification_manager = NotificationManager()
+
+        agent = PriceMonitorAgent(
+            config_path,
+            product_crud,
+            price_history_crud,
+            change_log_crud,
+            skill_manager,
+            comparator,
+            notification_manager,
+        )
+        return agent
+
+    _agent: PriceMonitorAgent = None
+
+    def get_agent() -> PriceMonitorAgent:
+        global _agent
+        if _agent is None:
+            _agent = init_agent()
+        return _agent
+
+    @app.get("/chat", response_class=HTMLResponse)
+    async def chat_page():
+        return render_template("chat.html", title="AI 助手")
+
+    @app.post("/api/chat")
+    async def chat_api(request: Request):
+        body = await request.json()
+        message = body.get("message", "").strip()
+        if not message:
+            return JSONResponse({"error": "消息不能为空"}, status_code=400)
+
+        try:
+            agent = get_agent()
+            response = await agent.chat(message)
+            return JSONResponse({"response": response})
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
 
     print("[5/6] 路由注册成功")
     print("\n" + "="*50)

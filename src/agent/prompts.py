@@ -37,6 +37,7 @@ Instructions:
 - When calling tools, use the function calling format provided
 - If the user's request is ambiguous, ask for clarification
 - After tool execution completes, summarize the result clearly for the user
+- IMPORTANT - For delete_product or confirm_update (destructive operations): You MUST first ask the user "请确认是否执行此操作？", then wait for the user to reply with "确认" or "是" before calling the tool. If the user does not confirm, do NOT call the tool.
 """
 
 USER_INTENT_PROMPT = """

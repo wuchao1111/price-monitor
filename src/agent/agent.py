@@ -3,6 +3,7 @@ Price Monitor Agent - main orchestrator
 """
 import asyncio
 import os
+import re
 from typing import Any, Dict, List, Optional
 from logging import getLogger
 
@@ -63,6 +64,14 @@ class PriceMonitorAgent(AgentToolsMixin):
 
         # Conversation history for multi-turn memory
         self._conversation_history: List[Dict] = []
+
+        # Destructive tools that require user confirmation
+        self._destructive_tools = {"delete_product", "confirm_update"}
+        # Confirmation keywords (Chinese)
+        self._confirm_pattern = re.compile(
+            r'^(?:\s*(?:确认|确认删除|确认更新|是|确定|是的|对的|没错|删除吧|更新吧|好|可以|行)\s*)+$',
+            re.IGNORECASE
+        )
 
     def _trim_history(self, max_turns: int = 20) -> None:
         """Trim to keep only the last N conversation turns (each turn = one user query)"""
@@ -163,7 +172,49 @@ class PriceMonitorAgent(AgentToolsMixin):
                 self._trim_history()
                 return text
 
-            # Execute tool calls
+            # ---- Confirmation guard for destructive tools ----
+            destructive_calls = [
+                tc for tc in tool_calls
+                if tc.get('name') in self._destructive_tools
+            ]
+            if destructive_calls:
+                # Check if the user has explicitly confirmed in this turn
+                user_confirmed = bool(self._confirm_pattern.match(user_input.strip()))
+                if not user_confirmed:
+                    # Block destructive tools and ask for confirmation
+                    # Build partial results for the LLM to see
+                    results = []
+                    for tc in tool_calls:
+                        if tc.get('name') in self._destructive_tools:
+                            results.append({
+                                "name": tc['name'],
+                                "result": {
+                                    "success": False,
+                                    "error": "CONFIRMATION_REQUIRED",
+                                    "message": f"⚠️ 该操作需要你的二次确认。请明确回复「确认」来执行此操作。"
+                                }
+                            })
+                        else:
+                            # Non-destructive tools still execute
+                            tool = self.tool_registry.get_tool(tc['name'])
+                            if tool:
+                                try:
+                                    if asyncio.iscoroutinefunction(tool):
+                                        r = await tool(**tc.get('parameters', {}))
+                                    else:
+                                        r = tool(**tc.get('parameters', {}))
+                                    results.append({"name": tc['name'], "result": r})
+                                except Exception as e:
+                                    results.append({"name": tc['name'], "error": str(e)})
+                            else:
+                                results.append({"name": tc['name'], "error": f"Tool '{tc['name']}' not found"})
+                    # Format the rejection results and continue loop
+                    messages = self.llm_client.format_tool_results(
+                        messages, tool_calls, results, original_response=response
+                    )
+                    continue
+
+            # Execute tool calls (all of them, including destructive ones that passed guard)
             results = await self.execute_tool_calls(tool_calls)
 
             # Format results and continue the loop
